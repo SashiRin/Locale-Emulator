@@ -126,9 +126,28 @@ namespace LEProc
                 if (false == Enumerable.Any(TimeZoneInfo.GetSystemTimeZones(), item => item.Id == value))
                     throw new Exception($"Timezone \"{value}\" not found in your system.");
 
-                var tzi = TimeZoneInfo.FindSystemTimeZoneById(value);
-                _leb.Timezone.SetStandardName(tzi.StandardName);
-                _leb.Timezone.SetDaylightName(tzi.StandardName);
+                string muiStd = (string) Registry.GetValue(
+                                  $"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\{value}",
+                                  "MUI_Std",
+                                  "");
+                string muiDlt = (string)Registry.GetValue(
+                                  $"HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Time Zones\\{value}",
+                                  "MUI_Dlt",
+                                  "");
+                if (string.IsNullOrEmpty(muiStd))
+                {
+                    //default case, original locale StandardName: "东京标准时间"
+                    var tzi = TimeZoneInfo.FindSystemTimeZoneById(value);
+                    _leb.Timezone.SetStandardName(tzi.StandardName);
+                    _leb.Timezone.SetDaylightName(tzi.DaylightName);
+                }
+                else
+                {
+                    //hooked locale StandardName: "東京 (標準時)" when fake UI language is on
+                    _leb.Timezone.SetStandardName(muiStd);
+                    _leb.Timezone.SetDaylightName(muiDlt);
+                }
+                
 
                 var tzi2 = ReadTZIFromRegistry(value);
                 _leb.Timezone.Bias = tzi2.Bias;
